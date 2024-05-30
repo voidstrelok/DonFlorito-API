@@ -101,7 +101,7 @@ namespace DonFlorito.Controllers
                 OrdenCompra.IsUsed = true;
             }
 
-            if (reserva.OrdenCompra.Count >= 5){
+            if (reserva.OrdenCompra.Count >= 3){//LIMITE DE INTENTOS
                 reserva.IdEstadoReserva = (long)EnumEstadoReserva.Anulada;
             }
             else

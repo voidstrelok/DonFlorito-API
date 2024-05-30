@@ -9,6 +9,7 @@ using DonFlorito.Models.Enum;
 using System.Collections.Generic;
 using DonFlorito.Util;
 using Microsoft.AspNetCore.HostFiltering;
+using System.Globalization;
 namespace DonFlorito.Controllers
 {
     [ApiController]
@@ -74,7 +75,7 @@ namespace DonFlorito.Controllers
         [HttpPost]
         public List<ContenedorEventosDTO> getCalendarioByServicio([FromForm] long IdServicio,[FromForm] long nPartidos, [FromForm] string FechaReserva)
         {
-            var Fecha = DateTime.Parse(FechaReserva);
+            var Fecha = DateTime.ParseExact(FechaReserva, "dd-MM-yyyy", CultureInfo.InvariantCulture);
 
             var Servicio = BD.Servicio.Find(IdServicio);
             var ListaReservas = new List<ContenedorEventosDTO>();

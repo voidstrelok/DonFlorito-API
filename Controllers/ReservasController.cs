@@ -355,7 +355,7 @@ namespace DonFlorito.Controllers
                         //servicio deshabilitado
                         if (!ReservaServicio.IdServicioNavigation.IsEnabled)
                         {
-                            return BadRequest("Uno o más servicios no están disponibles. Favor intente reservar nuevamente.");
+                            return BadRequest("Uno o más servicios no están disponibles. Favor intente reservar nuevamente. (Services not available anymore)");
                         }
                         //servicio con fecha ocupada
                         if (Servicio.IdTipoServicio != (long)EnumTipoServicio.Quincho && Servicio.IdTipoServicio != (long)EnumTipoServicio.PiscinaGeneral && Servicio.IdTipoServicio != (long)EnumTipoServicio.PiscinaAM)
@@ -385,7 +385,7 @@ namespace DonFlorito.Controllers
                                         (InicioReserva.TimeOfDay < evento.HoraComienzo.TimeOfDay && FinReserva.TimeOfDay > evento.HoraComienzo.TimeOfDay) || //reserva tiene evento en medio
                                         (InicioReserva.TimeOfDay >= evento.HoraComienzo.TimeOfDay && FinReserva.TimeOfDay <= evento.HoraFinal.TimeOfDay))   //reserva entre evento
                                     {
-                                        return BadRequest("El horario de su reserva dejó de estar disponible. Favor intente reservar en otro horario.");
+                                        return BadRequest("El horario de su reserva dejó de estar disponible. Favor intente reservar en otro horario. (Schedule already taken)");
                                     }
                                 }
 
@@ -414,7 +414,7 @@ namespace DonFlorito.Controllers
                             return ReservaDTO;
                         default:
                             // fallo del pago
-                            return BadRequest("El pago ha fallado o ha sido rechazado, favor intente nuevamente.");
+                            return BadRequest("El pago ha fallado o ha sido rechazado, favor intente nuevamente. (Payment Rejected or Failed)");
                     }
                 }
                 catch (Exception ex)

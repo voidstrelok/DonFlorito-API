@@ -62,7 +62,22 @@ builder.Services.AddCors(opt => opt.AddPolicy(name: "AngularDev",
         policy.WithOrigins("http://localhost:4200").AllowAnyMethod().AllowAnyHeader();
     }
     ));
+builder.Services.AddCors(opt => opt.AddPolicy(name: "Server",
+    policy =>
+    {
+        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader().SetIsOriginAllowed(origin => true) // allow any origin 
+;
+    }
+    ));
 
+
+builder.Services.Configure<StaticFileOptions>(options =>
+{
+    options.OnPrepareResponse = ctx =>
+    {
+        ctx.Context.Response.Headers.Append("Access-Control-Allow-Origin", "*");
+    };
+});
 
 builder.Services.AddAuthentication(cfg =>
 {
@@ -83,36 +98,33 @@ cfg.SaveToken = true;
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+app.UseAuthentication();
+
+
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
     app.UseCors("AngularDev");
 
+
 }
 else
 {
-    app.UseHttpsRedirection();
+    
 }
 
-app.UseHttpsRedirection();
+app.UseCors(options => options.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin().SetIsOriginAllowed(origin => true) // allow any origin 
+);
 
-app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
-
 
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
 });
-
-app.UseAuthentication();
-
-app.MapGet("/", () => "Hello ForwardedHeadersOptions!");
-
 
 app.Run();
