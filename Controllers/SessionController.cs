@@ -44,7 +44,7 @@ namespace DonFlorito.Controllers
         public async Task<ActionResult<string>> AdminLogin([FromForm] string usuario, [FromForm] string password)
         {
             var Usuario = await BD.Usuario.Where(u => u.Usuario1.Equals(usuario) && u.Contraseña.Equals(Util.Saltear(password))).Include(u => u.IdPersonaNavigation).FirstOrDefaultAsync();
-            Console.WriteLine(Util.Saltear(password));
+            //Console.WriteLine(Util.Saltear(password));
             if (Usuario == null)
             {
                 return NotFound("Credenciales incorrectas o el usuario no existe");

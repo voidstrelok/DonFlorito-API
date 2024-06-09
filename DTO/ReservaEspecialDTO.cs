@@ -9,10 +9,11 @@ namespace DonFlorito.DTO
         public long? IdTipoServicio { get; set; }
         public DateTime FechaComienzo { get; set; }
         public DateTime FechaTermino { get; set; }
-        public bool IsRecinto { get; set; }
+        public bool IsCanchas { get; set; }
+        public bool IsCamping { get; set; }
         public bool IsEnabled { get; set; }
 
         public virtual ServicioDTO Servicio { get; set; }
-        public virtual TipoServicioDTO TipoServicio{ get; set; }
+        public virtual TipoServicioDTO TipoServicio { get; set; }
     }
 }

@@ -436,58 +436,33 @@ namespace DonFlorito.Util
         //}
         #endregion
 
-
-
-        public Reserva RefrescarEstadoReserva(long IdReserva)
+        public async void EnviarCorreoReservaCancelada(Reserva Reserva)
         {
+            var Cliente = Reserva.IdPersonaNavigation;
 
-            var reserva = BD.Reserva.Where(r => r.Id == IdReserva).FirstOrDefault();
-            bool PagoVencido = (DateTime.Now - reserva.FechaIngreso).TotalMinutes >= 5;
-
-            if (reserva.IdEstadoReserva == (long)EnumEstadoReserva.PagoPendiente && PagoVencido)
+            var DestinatarioCliente = new List<string>
             {
-                reserva.IdEstadoReserva = (long)EnumEstadoReserva.Anulada;
-                reserva.IsEnabled = false;
-            }
-
-            if (reserva.IdEstadoReserva == (long)EnumEstadoReserva.Anulada)
-            {
-                var orden = reserva.OrdenCompra.OrderByDescending(o => o.Fecha).FirstOrDefault();
-                var resp = Check(orden.Token);
-                if (resp.ResponseCode == 0)
-                {
-                    reserva.IdEstadoReserva = (long)EnumEstadoReserva.Confirmada;
-                }
-
-            }
-            BD.SaveChanges();
-            return reserva;
-            
-        }
-
-        public async void EnviarCorreoPagarReserva(Reserva Reserva)
-        {
-            var Persona = Reserva.IdPersonaNavigation;
-            var dest = new List<string>
-            {
-                Persona.Email
+                Cliente.Email,
             };
-            var Body = string.Empty;
-            using (var reader = new StreamReader(webHostEnvironment.ContentRootPath+"/Resources/Email/EmailPagarReservaCliente.html"))
+
+            var BodyCliente = string.Empty;
+            using (var reader = new StreamReader(webHostEnvironment.ContentRootPath + "/Resources/Email/EmailCancelarReservaCliente.html"))
             {
-                Body = reader.ReadToEnd();
+                BodyCliente = reader.ReadToEnd();
             }
 
-            Body = Body.Replace("{nombre}", Persona.Nombre+" "+Persona.ApellidoPaterno);
-            Body = Body.Replace("{id}", Reserva.Id.ToString());
-            var QR = GenLinkQr(Reserva.Id);
-            var Asunto = "Pago pendiente de reserva DF"+Reserva.Id.ToString();
+            BodyCliente = BodyCliente.Replace("{fecha}", Reserva.FechaReserva.ToShortDateString());
+            BodyCliente = BodyCliente.Replace("{nombre}", Cliente.Nombre + " " + Cliente.ApellidoPaterno);
+            BodyCliente = BodyCliente.Replace("{id}", Reserva.Id.ToString());
+
+            var Asunto = "Reserva DF" + Reserva.Id.ToString() + " Cancelada";
             if (Config.GetValue<string>("Ambiente").Equals("Desarrollo"))
             {
                 Asunto = "*DEMO* " + Asunto;
             }
-            Mail.Send(dest, Asunto, Body, QR);
+            Mail.Send(DestinatarioCliente, Asunto, BodyCliente, null);
         }
+
 
         public async void EnviarCorreoReservaPagada(Reserva Reserva, Voucher vc)
         {

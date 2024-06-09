@@ -16,6 +16,7 @@ using System.Resources;
 using Rut;
 using MimeKit;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Mvc.Razor;
 
 namespace DonFlorito.Controllers
 {
@@ -54,13 +55,6 @@ namespace DonFlorito.Controllers
             if (reserva.IdPersona == null && reserva.PersonaCreacion == null)
             {
                 return BadRequest("Sin datos de persona.");
-            }
-
-
-            //refresca las reservas del día
-            foreach (var item in BD.Reserva.Where(r => r.FechaReserva.Date == reserva.FechaReserva && r.IdEstadoReserva == (long)EnumEstadoReserva.PagoPendiente).Include(r => r.OrdenCompra).ToList())
-            {
-                Util.RefrescarEstadoReserva(item.Id);
             }
 
             long IdPersona = 0;
@@ -186,7 +180,7 @@ namespace DonFlorito.Controllers
                                 .OrderBy(rs => rs.HoraComienzo)
                                 .ToList();
 
-                            var reservasEsp = BD.ReservasEspeciales.Where(re => (re.FechaComienzo.Date <= Fecha || re.FechaTermino >= Fecha) && (re.IsRecinto || re.IdServicio == Servicio.Id) && re.IsEnabled).ToList();
+                            var reservasEsp = BD.ReservasEspeciales.Where(re => (re.FechaComienzo.Date <= Fecha || re.FechaTermino >= Fecha) && (re.IsCanchas || re.IsCamping || re.IdServicio == Servicio.Id) && re.IsEnabled).ToList();
 
                             var ListaReservas = Util.ObtenerEventos(reservas, reservasEsp, Fecha);
                             if (ListaReservas.Count > 0)
@@ -371,7 +365,7 @@ namespace DonFlorito.Controllers
                                 .OrderBy(rs => rs.HoraComienzo)
                                 .ToList();
 
-                            var reservasEsp = BD.ReservasEspeciales.Where(re => (re.FechaComienzo.Date <= Fecha || re.FechaTermino >= Fecha) && (re.IsRecinto || re.IdServicio == Servicio.Id) && re.IsEnabled).ToList();
+                            var reservasEsp = BD.ReservasEspeciales.Where(re => (re.FechaComienzo.Date <= Fecha || re.FechaTermino >= Fecha) && (re.IsCanchas|| re.IsCamping || re.IdServicio == Servicio.Id) && re.IsEnabled).ToList();
 
                             var ListaReservas = Util.ObtenerEventos(reservas, reservasEsp, Fecha);
                             if (ListaReservas.Count > 0)
@@ -458,12 +452,7 @@ namespace DonFlorito.Controllers
             {
                 return NotFound("No se encontró la reserva :"+IdReserva);
             }
-
-            reserva = Util.RefrescarEstadoReserva(reserva.Id);
-
             ReservaDTO NReserva = Mapper.Map<ReservaDTO>(reserva);
-
-            NReserva.OrdenCompra = NReserva.OrdenCompra.Where(o => !o.IsUsed).ToList();
 
             return NReserva;
         }
@@ -514,16 +503,20 @@ namespace DonFlorito.Controllers
         [HttpGet]
         public ActionResult CancelarReserva(long IdReserva)
         {
-            var reserva = BD.Reserva.Where(r => r.Id == IdReserva).FirstOrDefault();
+            var reserva = BD.Reserva.Where(r => r.Id == IdReserva).Include(r=>r.IdPersonaNavigation).FirstOrDefault();
+
             if (reserva == null)
             {
                 return BadRequest("Reserva inválida.");
             }
-            //TODO correo anular reserva 
+            if (reserva.FechaReserva.Date < DateTime.Now.Date)
+            {
+                return BadRequest("La fecha de la reserva ya ha pasado.");
+            }
             reserva.IdEstadoReserva = (long)EnumEstadoReserva.Anulada;
             reserva.FechaCancelacion = DateTime.Now;
             BD.SaveChanges();
-
+            Util.EnviarCorreoReservaCancelada(reserva);
             return Ok();
         }
 
@@ -547,9 +540,10 @@ namespace DonFlorito.Controllers
             {
                 FechaComienzo = reserva.FechaComienzo,
                 FechaTermino = reserva.FechaTermino,
-                IdServicio = reserva.IdServicio,
-                IdTipoServicio = reserva.IdTipoServicio,
-                IsRecinto = reserva.IsRecinto,
+                IdServicio =(reserva.IsCamping || reserva.IsCanchas) ? null:reserva.IdServicio,
+                IdTipoServicio = (reserva.IsCamping || reserva.IsCanchas) ? null : reserva.IdTipoServicio,
+                IsCamping= reserva.IsCamping,
+                IsCanchas=reserva.IsCanchas,
                 IsEnabled = true
             };
 

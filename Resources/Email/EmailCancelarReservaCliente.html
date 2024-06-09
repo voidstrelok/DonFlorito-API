@@ -1,0 +1,140 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta name="format-detection" content="telephone=no">
+    <style>
+        .mail {
+            background-color: #f2f2f2;
+            font-size: 1.3rem;
+            padding: 3%;
+            font-family: "Arial"
+        }
+
+        .mail-body {
+            background-color: white;
+            padding: 5%;
+        }
+
+        img {
+            height: 100%;
+            width: 20rem;
+        }
+
+        .mail-head {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .mail-footer {
+            padding: 3%;
+        }
+
+            .mail-footer p {
+                font-size: 1rem;
+            }
+
+        .btn-azul {
+            background-color: #00529F;
+            font-size: 2rem;
+            padding: 2%;
+            border-radius: 10px;
+            border: none;
+            color: white;
+            text-decoration: none;
+        }
+
+            .btn-azul:hover {
+                background-color: #3375b2;
+                color: white;
+            }
+
+            .btn-azul:focus {
+                background-color: #3375b2 !important;
+            }
+
+            .btn-azul:active {
+                background-color: #3375b2 !important;
+            }
+
+        .footer-logo {
+            width: 32px;
+            opacity: 30%;
+        }
+
+        .florito {
+            width: 200px;
+        }
+
+        .reservas {
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        td, th {
+            width: 50%;
+            padding: 1%;
+        }
+
+        td {
+            background-color: #f2f2f2
+        }
+
+
+
+        .text-end {
+            text-align: end
+        }
+
+        .text-center {
+            text-align: center
+        }
+
+        .text-start {
+            text-align: start
+        }
+
+        .azul {
+            color: #00529F;
+        }
+    </style>
+    <title>Don Florito</title>
+</head>
+<body>
+    <div class="mail">
+        <div class="mail-head">
+            <img src="{logo-head}">
+        </div>
+        <div class="mail-body">
+            <div style="text-align: center;">
+                <h3>Reserva Cancelada</h3>
+            </div>
+            <p>{nombre}, su reserva "<strong>DF{id}</strong>" para la fecha <strong>{fecha}</strong> ha sido <strong style="color:red;">cancelada</strong> por la administración, favor consultar los términos de uso y políticas del recinto con respecto a las devoluciones. </p>
+            <br />
+            <div style="text-align: center;">
+                <a class="boton-reserva btn-azul" href="{url}//assets/res/doc/terminos-condiciones-ES.pdf">Términos de uso</a>
+
+            </div><br /><br />
+            <p>Si tiene dudas o consultas favor llamar al +569 9527 8783 o al correo <a href="mailto:contacto@donflorito.cl">contacto&#64;donflorito.cl</a></p>
+            <div style="text-align: center;">
+
+                <img class="florito" src="{florito}">
+            </div>
+        </div>
+        <div class="mail-footer">
+            <div style="text-align: center;">
+                <a href="https://www.instagram.com/complejo_don_florito/">
+                    <img class="footer-logo" src="{logo-instagram}">
+                </a>&nbsp; &nbsp; <a href="https://wa.me/56995278783">
+                    <img class="footer-logo" src="{logo-wsp}">
+                </a>
+            </div>
+            <p>
+                Este correo fué enviado automáticamente, para consultas sobre reservas contactar a <a href="mailto:contacto@donflorito.cl">contacto&#64;donflorito.cl</a>. Para consultas sobre el uso de la web contactar a <a href="mailto:soporte@donflorito.cl">soporte&#64;donflorito.cl</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

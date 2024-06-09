@@ -32,6 +32,9 @@
     <None Update="Resources\Email\EmailPagoReservaAdmin.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Resources\Email\EmailCancelarReservaCliente.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Resources\Email\EmailPagoReservaCliente.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

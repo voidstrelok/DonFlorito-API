@@ -33,16 +33,90 @@ namespace DonFlorito.Controllers
         [AllowAnonymous]
         [Route("getCatalogo")]
         [HttpPost]
-        public List<TipoServicioDTO> getCatalogo()
+        public List<TipoServicioDTO> getCatalogo([FromForm] string FechaReserva)
         {
+            var Fecha = DateTime.ParseExact(FechaReserva, "dd-MM-yyyy", CultureInfo.InvariantCulture);
+
             var TipoServicios = BD.TipoServicio
                 .Include(ts=>ts.Servicio.Where(s=>s.IsEnabled))
                 .Include(ts=>ts.PrecioServicio.Where(p=>p.IsEnabled))
                 .OrderBy(ts=>ts.Id)
                 .ToList();
 
+            var ReservasEspeciales = BD.ReservasEspeciales.Where(r => (Fecha.Date >= r.FechaComienzo.Date  && Fecha.Date <= r.FechaTermino.Date && r.IsEnabled)).ToList();
+            var esCamping = ReservasEspeciales.Any(r => r.IsCamping);
+            var esCanchas = ReservasEspeciales.Any(r => r.IsCanchas);
+            var esPiscina = ReservasEspeciales.Any(r => r.IdTipoServicio== (long)EnumTipoServicio.PiscinaGeneral);
+            var esQuincho = ReservasEspeciales.Any(r => r.IdTipoServicio == (long)EnumTipoServicio.Quincho);
+
+            if (esCamping&&esCanchas)
+            {
+                TipoServicios.Clear();
+            }
+            
+            if (esCamping)
+            {
+                TipoServicios = TipoServicios.Where(s => s.Id != (long)EnumTipoServicio.PiscinaGeneral
+                && s.Id != (long)EnumTipoServicio.PiscinaAM
+                && s.Id != (long)EnumTipoServicio.Quincho).ToList();
+            }
+            
+            if (esCanchas)
+            {
+                TipoServicios = TipoServicios.Where(s => s.Id != (long)EnumTipoServicio.Futbol1
+                && s.Id != (long)EnumTipoServicio.Futbol2
+                && s.Id != (long)EnumTipoServicio.Futbolito
+                && s.Id != (long)EnumTipoServicio.Tenis2Personas
+                && s.Id != (long)EnumTipoServicio.Tenis4Personas).ToList();
+            }
+            if (esPiscina)
+            {
+                TipoServicios = TipoServicios.Where(s => s.Id != (long)EnumTipoServicio.PiscinaGeneral
+                && s.Id != (long)EnumTipoServicio.PiscinaAM).ToList();
+            }
+
+            if (esQuincho)
+            {
+                var rs = ReservasEspeciales.Where(r => r.IdTipoServicio == (long)EnumTipoServicio.Quincho && r.IdServicio != null).ToList();
+                var Quinchos = TipoServicios.Where(s => s.Id == (long)EnumTipoServicio.Quincho).FirstOrDefault();
+
+                if (rs.Count > 0)
+                {
+                    foreach(var resp in rs)
+                    {
+                        if(Quinchos.Servicio.Count  > 0)
+                        {
+                            foreach (var q in Quinchos.Servicio)
+                            {
+                                if (resp.IdServicio == q.Id)
+                                {
+                                    Quinchos.Servicio = Quinchos.Servicio.Where(q => q.Id != resp.IdServicio).ToList();
+                                    break;
+                                }
+                            }
+                        }
+                       
+                    }
+                }
+                else
+                {
+                    TipoServicios = TipoServicios.Where(s => s.Id != (long)EnumTipoServicio.Quincho).ToList();
+
+                }
+
+            }
+
+            if(Fecha.DayOfWeek.Equals(DayOfWeek.Monday) || Fecha.DayOfWeek.Equals(DayOfWeek.Tuesday) || Fecha.DayOfWeek.Equals(DayOfWeek.Wednesday) || Fecha.DayOfWeek.Equals(DayOfWeek.Thursday)) // quita las canchas de futbol de lunes a jueves
+            {
+                TipoServicios = TipoServicios.Where(s => s.Id != (long)EnumTipoServicio.Futbol1
+                && s.Id != (long)EnumTipoServicio.Futbol2
+                && s.Id != (long)EnumTipoServicio.Futbolito).ToList();
+            }
+
+            TipoServicios = TipoServicios.Where(ts => ts.Servicio.Count > 0).ToList();
+
+
             List<TipoServicioDTO> TipoServiciosDTO = TipoServicios.Select(ts => Mapper.Map<TipoServicioDTO>(ts)).ToList();
-            TipoServiciosDTO = TipoServiciosDTO.Where(ts=>ts.Servicio.Count > 0).ToList();
             return TipoServiciosDTO;
         }
 
@@ -92,7 +166,7 @@ namespace DonFlorito.Controllers
                 var reservas = BD.ReservaServicio.Where(rs => rs.IdServicio == Servicio.Id && rs.IdReservaNavigation.FechaReserva.Date == Fecha && rs.IdReservaNavigation.IsEnabled && rs.IdReservaNavigation.IdEstadoReserva == (long)EnumEstadoReserva.Confirmada).Include(r=>r.IdPrecioServicioNavigation)
                     .OrderBy(rs => rs.HoraComienzo)
                     .ToList();
-                var reservasEsp = BD.ReservasEspeciales.Where(re => (re.FechaComienzo.Date <= Fecha || re.FechaTermino >= Fecha) && ( re.IsRecinto || re.IdServicio == Servicio.Id) && re.IsEnabled).ToList();
+                var reservasEsp = BD.ReservasEspeciales.Where(re => (re.FechaComienzo.Date <= Fecha || re.FechaTermino >= Fecha) && (re.IsCanchas || re.IsCamping || re.IdServicio == Servicio.Id) && re.IsEnabled).ToList();
 
                 ListaReservas = Util.ObtenerEventos(reservas, reservasEsp, Fecha);
 

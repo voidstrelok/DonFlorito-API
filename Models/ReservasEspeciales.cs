@@ -12,7 +12,8 @@ namespace DonFlorito.Models
         public long? IdTipoServicio { get; set; }
         public DateTime FechaComienzo { get; set; }
         public DateTime FechaTermino { get; set; }
-        public bool IsRecinto { get; set; }
+        public bool IsCanchas { get; set; }
+        public bool IsCamping { get; set; }
         public bool IsEnabled { get; set; }
 
         public virtual Servicio IdServicioNavigation { get; set; }

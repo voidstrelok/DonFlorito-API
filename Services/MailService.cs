@@ -46,21 +46,23 @@ namespace DonFlorito.Services
             var Florito = builder.LinkedResources.Add(webHostEnvironment.ContentRootPath + "/Resources/Email/florito.png");
             var Instagram = builder.LinkedResources.Add(webHostEnvironment.ContentRootPath + "/Resources/Email/instagram.png");
             var Whatsapp = builder.LinkedResources.Add(webHostEnvironment.ContentRootPath + "/Resources/Email/whatsapp.png");
-            var QR = builder.LinkedResources.Add("QR",new MemoryStream(QRCode));
 
             Logo.ContentId = MimeUtils.GenerateMessageId();
             Florito.ContentId = MimeUtils.GenerateMessageId();
             Instagram.ContentId = MimeUtils.GenerateMessageId();
             Whatsapp.ContentId = MimeUtils.GenerateMessageId();
-            QR.ContentId = MimeUtils.GenerateMessageId();
 
             contenido = contenido.Replace("{logo-head}", $"cid:{Logo.ContentId}");
             contenido = contenido.Replace("{florito}", $"cid:{Florito.ContentId}");
             contenido = contenido.Replace("{logo-instagram}", $"cid:{Instagram.ContentId}");
             contenido = contenido.Replace("{logo-wsp}", $"cid:{Whatsapp.ContentId}");
-            contenido = contenido.Replace("{qr}", $"cid:{QR.ContentId}");
 
-
+            if(QRCode != null)
+            {
+                var QR = builder.LinkedResources.Add("QR", new MemoryStream(QRCode));
+                QR.ContentId = MimeUtils.GenerateMessageId();
+                contenido = contenido.Replace("{qr}", $"cid:{QR.ContentId}");
+            }
 
             contenido = contenido.Replace("{url}",URL);
 
