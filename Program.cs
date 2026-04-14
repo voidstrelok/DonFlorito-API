@@ -54,21 +54,31 @@ builder.Services.AddDbContext<DonFloritoContext>(options =>
 
 builder.Services.AddScoped<MailService>();
 builder.Services.AddScoped<Utils>();
+builder.Services.AddScoped<PersonaService>();
 
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
-builder.Services.AddCors(opt => opt.AddPolicy(name: "AngularDev",
-    policy =>
-    {
-        policy.WithOrigins("http://localhost:4200").AllowAnyMethod().AllowAnyHeader();
-    }
-    ));
-builder.Services.AddCors(opt => opt.AddPolicy(name: "Server",
-    policy =>
-    {
-        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader().SetIsOriginAllowed(origin => true) // allow any origin 
-;
-    }
-    ));
+builder.Services.AddCors(opt =>
+{
+    opt.AddPolicy(name: "AngularDev",
+        policy =>
+        {
+            policy.WithOrigins("http://localhost:4200").AllowAnyMethod().AllowAnyHeader();
+        });
+
+    opt.AddPolicy(name: "Server",
+        policy =>
+        {
+            var origenesPermitidos = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+            if (origenesPermitidos.Length > 0)
+            {
+                policy.WithOrigins(origenesPermitidos).AllowAnyMethod().AllowAnyHeader();
+            }
+            else
+            {
+                policy.SetIsOriginAllowed(_ => false).AllowAnyMethod().AllowAnyHeader();
+            }
+        });
+});
 
 
 builder.Services.Configure<StaticFileOptions>(options =>
@@ -91,14 +101,19 @@ cfg.SaveToken = true;
     {
         ValidateIssuerSigningKey = true,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration.GetValue<string>("salt"))),
-        ValidateIssuer = false,
-        ValidateAudience = false,
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidIssuer = builder.Configuration.GetValue<string>("JwtIssuer"),
+        ValidAudience = builder.Configuration.GetValue<string>("JwtAudience"),
     };
 });
 
 var app = builder.Build();
 
-app.UseAuthentication();
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
 
 
 
@@ -112,19 +127,13 @@ if (app.Environment.IsDevelopment())
 }
 else
 {
-    
+    app.UseCors("Server");
 }
 
-app.UseCors(options => options.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin().SetIsOriginAllowed(origin => true) // allow any origin 
-);
+app.UseAuthentication();
 
 app.UseAuthorization();
 
 app.MapControllers();
-
-app.UseForwardedHeaders(new ForwardedHeadersOptions
-{
-    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
-});
 
 app.Run();

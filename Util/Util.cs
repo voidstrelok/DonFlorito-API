@@ -292,6 +292,8 @@ namespace DonFlorito.Util
             {
                 Subject = claims,
                 Expires = DateTime.UtcNow.AddSeconds(tiempoSesion),
+                Issuer = Config.GetValue<string>("JwtIssuer"),
+                Audience = Config.GetValue<string>("JwtAudience"),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
 
@@ -436,7 +438,7 @@ namespace DonFlorito.Util
         //}
         #endregion
 
-        public async void EnviarCorreoReservaCancelada(Reserva Reserva)
+        public async Task EnviarCorreoReservaCancelada(Reserva Reserva)
         {
             var Cliente = Reserva.IdPersonaNavigation;
 
@@ -460,11 +462,11 @@ namespace DonFlorito.Util
             {
                 Asunto = "*DEMO* " + Asunto;
             }
-            Mail.Send(DestinatarioCliente, Asunto, BodyCliente, null);
+            await Mail.Send(DestinatarioCliente, Asunto, BodyCliente, null);
         }
 
 
-        public async void EnviarCorreoReservaPagada(Reserva Reserva, Voucher vc)
+        public async Task EnviarCorreoReservaPagada(Reserva Reserva, Voucher vc)
         {
 
             var Cliente = Reserva.IdPersonaNavigation;
@@ -571,8 +573,8 @@ namespace DonFlorito.Util
             {
                 Asunto = "*DEMO* " + Asunto;
             }
-            Mail.Send(DestinatarioCliente, Asunto, BodyCliente, QR);
-            Mail.Send(DestinatarioAdmin, Asunto, BodyAdmin, QR);
+            await Mail.Send(DestinatarioCliente, Asunto, BodyCliente, QR);
+            await Mail.Send(DestinatarioAdmin, Asunto, BodyAdmin, QR);
 
         }
     }
