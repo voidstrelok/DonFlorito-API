@@ -43,7 +43,7 @@ namespace DonFlorito.Controllers
         [HttpPost]
         public async Task<ActionResult<string>> AdminLogin([FromForm] string usuario, [FromForm] string password)
         {
-            var Usuario = await BD.Usuario.Where(u => u.Usuario1.Equals(usuario) && u.Contraseña.Equals(Util.Saltear(password))).Include(u => u.IdPersonaNavigation).FirstOrDefaultAsync();
+            var Usuario = await BD.Usuario.Where(u => u.Usuario1.Equals(usuario) && u.ContraseÃ±a.Equals(Util.Saltear(password))).Include(u => u.IdPersonaNavigation).FirstOrDefaultAsync();
             //Console.WriteLine(Util.Saltear(password));
             if (Usuario == null)
             {
@@ -138,24 +138,5 @@ namespace DonFlorito.Controllers
 
             return true;
         }
-        [Route("Test")]
-        [HttpPost]
-        public async Task<IActionResult> Test(int reserva)
-        {
-            //var NReserva = BD.Reserva.Where(r => r.Id == reserva)
-            //            .Include(r => r.ReservaServicio).ThenInclude(rs => rs.IdPrecioServicioNavigation)
-            //            .Include(r => r.ReservaServicio).ThenInclude(rs => rs.IdServicioNavigation)
-            //            .Include(r => r.IdPersonaNavigation)
-            //            .Include(r => r.OrdenCompra).ThenInclude(od => od.Voucher)
-            //            .FirstOrDefault();
-
-            //var vc = NReserva.OrdenCompra.FirstOrDefault().Voucher.FirstOrDefault();
-            //Util.EnviarCorreoPagarReserva(NReserva);
-            //Util.EnviarCorreoReservaPagada(NReserva,vc);
-            Console.WriteLine("comienza metodo");
-            return Ok();
-
-        }
-
     }
 }

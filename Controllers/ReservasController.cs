@@ -17,6 +17,7 @@ using Rut;
 using MimeKit;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Mvc.Razor;
+using DonFlorito.Services;
 
 namespace DonFlorito.Controllers
 {
@@ -29,13 +30,15 @@ namespace DonFlorito.Controllers
         private readonly DonFloritoContext BD;
         private readonly IMapper Mapper;
         private readonly Utils Util;
+        private readonly PersonaService PersonaService;
 
-        public ReservasController(ILogger<SessionController> logger, DonFloritoContext context, IMapper mapper, Utils util)
+        public ReservasController(ILogger<SessionController> logger, DonFloritoContext context, IMapper mapper, Utils util, PersonaService personaService)
         {
             BD = context;
             _logger = logger;
             Mapper = mapper;
             Util = util;
+            PersonaService = personaService;
         }
 
         [HttpPost]
@@ -44,7 +47,7 @@ namespace DonFlorito.Controllers
             //reservas deshabilitadas al momento
             if(!BD.Parametros.FirstOrDefault().ReservasEnabled)
             {
-                return BadRequest("El sistema de reservas está deshabilitado");
+                return BadRequest("El sistema de reservas estï¿½ deshabilitado");
             }
 
             if (reserva == null)
@@ -57,59 +60,16 @@ namespace DonFlorito.Controllers
                 return BadRequest("Sin datos de persona.");
             }
 
-            long IdPersona = 0;
-            if (reserva.IdPersona != null)
+            var resultadoPersona = await PersonaService.ObtenerOCrearPersonaAsync(reserva.IdPersona, reserva.PersonaCreacion);
+            if (resultadoPersona.Error != null)
             {
-                var Persona = BD.Persona.Where(p => p.Id == reserva.IdPersona).FirstOrDefault();
-                if (Persona == null)
+                if (resultadoPersona.Error is ObjectResult errorConDetalle)
                 {
-                    return BadRequest("La persona no existe.");
+                    return StatusCode(errorConDetalle.StatusCode ?? 400, errorConDetalle.Value);
                 }
-                else
-                {
-                    IdPersona = Persona.Id;
-                }
-
+                return BadRequest();
             }
-            else if (reserva.PersonaCreacion != null)
-            {
-                var PersonaExiste = BD.Persona.Any(p => p.Rut == reserva.PersonaCreacion.Rut);
-
-                if (PersonaExiste)
-                {
-                    return BadRequest("Ya existe la persona que se intenta ingresar.");
-                }
-                else
-                {
-                    var PersonaCreacion = reserva.PersonaCreacion;
-                    var RutValido = (new Rut.Rut(PersonaCreacion.Rut)).IsValid;
-                    if (!RutValido)
-                    {
-                        return BadRequest("RUT no válido");
-                    }
-
-                    if (!MailboxAddress.TryParse(PersonaCreacion.Email, out var EmailValido))
-                    {
-                        return BadRequest("Email no válido");
-
-                    }
-
-                    var NPersona = new Persona()
-                    {
-                        Nombre = PersonaCreacion.Nombre,
-                        SegundoNombre = PersonaCreacion.SegundoNombre,
-                        ApellidoPaterno = PersonaCreacion.ApellidoPaterno,
-                        ApellidoMaterno = PersonaCreacion.ApellidoMaterno,
-                        Email = PersonaCreacion.Email,
-                        Telefono = PersonaCreacion.Telefono,
-                        Rut = PersonaCreacion.Rut,
-                        IsEnabled = true,
-                    };
-                    BD.Persona.Add(NPersona);
-                    await BD.SaveChangesAsync();
-                    IdPersona = NPersona.Id;
-                }
-            }
+            var IdPersona = resultadoPersona.IdPersona;
             using (TransactionScope transactionScope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
             {
                 try
@@ -164,7 +124,7 @@ namespace DonFlorito.Controllers
                         //servicio deshabilitado
                         if (!ReservaServicio.IdServicioNavigation.IsEnabled)
                         {
-                            return BadRequest("Uno o más servicios no están disponibles. Favor intente reservar nuevamente.");
+                            return BadRequest("Uno o mï¿½s servicios no estï¿½n disponibles. Favor intente reservar nuevamente.");
                         }
                         //servicio con fecha ocupada
                         if (Servicio.IdTipoServicio != (long)EnumTipoServicio.Quincho && Servicio.IdTipoServicio != (long)EnumTipoServicio.PiscinaGeneral && Servicio.IdTipoServicio != (long)EnumTipoServicio.PiscinaAM)
@@ -194,7 +154,7 @@ namespace DonFlorito.Controllers
                                         (InicioReserva.TimeOfDay < evento.HoraComienzo.TimeOfDay && FinReserva.TimeOfDay > evento.HoraComienzo.TimeOfDay) || //reserva tiene evento en medio
                                         (InicioReserva.TimeOfDay >= evento.HoraComienzo.TimeOfDay && FinReserva.TimeOfDay <= evento.HoraFinal.TimeOfDay))   //reserva entre evento
                                     {
-                                        return BadRequest("El horario de su reserva dejó de estar disponible. Favor intente reservar en otro horario.");
+                                        return BadRequest("El horario de su reserva dejï¿½ de estar disponible. Favor intente reservar en otro horario.");
                                     }
                                 }
 
@@ -219,9 +179,9 @@ namespace DonFlorito.Controllers
 
         [Route("ConfirmarReserva/{token_ws}")]
         [HttpPost]
-        public ActionResult<ReservaDTO> ConfirmarReserva([FromBody] ReservaDTO reserva, string token_ws)
+        public async Task<ActionResult<ReservaDTO>> ConfirmarReserva([FromBody] ReservaDTO reserva, string token_ws)
         {
-            if (reserva == null || token_ws.IsNullOrEmpty())
+            if (reserva == null || string.IsNullOrEmpty(token_ws))
             {
                 return BadRequest("Sin datos");
             }
@@ -245,48 +205,29 @@ namespace DonFlorito.Controllers
 
             }
 
-            var PersonaExiste = BD.Persona.Where(p => p.Rut == reserva.Persona.Rut).FirstOrDefault();
-
             using (TransactionScope transactionScope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
             {
-                long IdPersona = 0;
                 var DetalleTX = Util.Check(token_ws);
-
-
-                if (PersonaExiste != null)
+                var personaCreacion = new PersonaCreacionDTO
                 {
-                    IdPersona = PersonaExiste.Id;
-                }
-                else
+                    Nombre = reserva.Persona.Nombre,
+                    SegundoNombre = reserva.Persona.SegundoNombre,
+                    ApellidoPaterno = reserva.Persona.ApellidoPaterno,
+                    ApellidoMaterno = reserva.Persona.ApellidoMaterno,
+                    Email = reserva.Persona.Email,
+                    Telefono = reserva.Persona.Telefono,
+                    Rut = reserva.Persona.Rut
+                };
+                var resultadoPersona = await PersonaService.ObtenerOCrearPersonaAsync(null, personaCreacion);
+                if (resultadoPersona.Error != null)
                 {
-                    var PersonaCreacion = reserva.Persona;
-                    var RutValido = (new Rut.Rut(PersonaCreacion.Rut)).IsValid;
-                    if (!RutValido)
+                    if (resultadoPersona.Error is ObjectResult errorConDetalle)
                     {
-                        return BadRequest("RUT no válido");
+                        return StatusCode(errorConDetalle.StatusCode ?? 400, errorConDetalle.Value);
                     }
-
-                    if (!MailboxAddress.TryParse(PersonaCreacion.Email, out var EmailValido))
-                    {
-                        return BadRequest("Email no válido");
-
-                    }
-
-                    var NPersona = new Persona()
-                    {
-                        Nombre = PersonaCreacion.Nombre,
-                        SegundoNombre = PersonaCreacion.SegundoNombre,
-                        ApellidoPaterno = PersonaCreacion.ApellidoPaterno,
-                        ApellidoMaterno = PersonaCreacion.ApellidoMaterno,
-                        Email = PersonaCreacion.Email,
-                        Telefono = PersonaCreacion.Telefono,
-                        Rut = PersonaCreacion.Rut,
-                        IsEnabled = true,
-                    };
-                    BD.Persona.Add(NPersona);
-                    BD.SaveChanges();
-                    IdPersona = NPersona.Id;
+                    return BadRequest();
                 }
+                var IdPersona = resultadoPersona.IdPersona;
 
                 try
                 {
@@ -349,7 +290,7 @@ namespace DonFlorito.Controllers
                         //servicio deshabilitado
                         if (!ReservaServicio.IdServicioNavigation.IsEnabled)
                         {
-                            return BadRequest("Uno o más servicios no están disponibles. Favor intente reservar nuevamente. (Services not available anymore)");
+                            return BadRequest("Uno o mï¿½s servicios no estï¿½n disponibles. Favor intente reservar nuevamente. (Services not available anymore)");
                         }
                         //servicio con fecha ocupada
                         if (Servicio.IdTipoServicio != (long)EnumTipoServicio.Quincho && Servicio.IdTipoServicio != (long)EnumTipoServicio.PiscinaGeneral && Servicio.IdTipoServicio != (long)EnumTipoServicio.PiscinaAM)
@@ -379,7 +320,7 @@ namespace DonFlorito.Controllers
                                         (InicioReserva.TimeOfDay < evento.HoraComienzo.TimeOfDay && FinReserva.TimeOfDay > evento.HoraComienzo.TimeOfDay) || //reserva tiene evento en medio
                                         (InicioReserva.TimeOfDay >= evento.HoraComienzo.TimeOfDay && FinReserva.TimeOfDay <= evento.HoraFinal.TimeOfDay))   //reserva entre evento
                                     {
-                                        return BadRequest("El horario de su reserva dejó de estar disponible. Favor intente reservar en otro horario. (Schedule already taken)");
+                                        return BadRequest("El horario de su reserva dejï¿½ de estar disponible. Favor intente reservar en otro horario. (Schedule already taken)");
                                     }
                                 }
 
@@ -403,7 +344,7 @@ namespace DonFlorito.Controllers
                             NReserva.FechaConfirmacion = DateTime.Now;
                             BD.SaveChanges();
                             transactionScope.Complete();
-                            Util.EnviarCorreoReservaPagada(NReserva, vc);
+                            await Util.EnviarCorreoReservaPagada(NReserva, vc);
                             ReservaDTO ReservaDTO = Mapper.Map<ReservaDTO>(NReserva);
                             return ReservaDTO;
                         default:
@@ -450,7 +391,7 @@ namespace DonFlorito.Controllers
            
             if (reserva == null)
             {
-                return NotFound("No se encontró la reserva :"+IdReserva);
+                return NotFound("No se encontrï¿½ la reserva :"+IdReserva);
             }
             ReservaDTO NReserva = Mapper.Map<ReservaDTO>(reserva);
 
@@ -467,14 +408,18 @@ namespace DonFlorito.Controllers
         [Authorize]
         [Route("getReservas")]
         [HttpGet]
-        public async Task<ActionResult<List<ReservaDTO>>> getReservas(int anio, int mes)
+        public async Task<ActionResult<List<ReservaDTO>>> getReservas(int anio, int mes, int pagina = 1, int porPagina = 50)
         {
+            pagina = pagina < 1 ? 1 : pagina;
+            porPagina = porPagina < 1 ? 50 : porPagina;
             var reservas = await BD.Reserva.Where(r => r.FechaReserva.Month == mes && r.FechaReserva.Year == anio)
                 .Include(r => r.IdEstadoReservaNavigation)
                 .Include(r => r.IdPersonaNavigation)
                 .Include(r => r.ReservaServicio).ThenInclude(rs => rs.IdPrecioServicioNavigation).ThenInclude(rs => rs.ReservaServicio).ThenInclude(rs => rs.IdServicioNavigation)
                 .Include(r => r.OrdenCompra).ThenInclude(oc => oc.Voucher)
                 .OrderByDescending(r => r.FechaIngreso)
+                .Skip((pagina - 1) * porPagina)
+                .Take(porPagina)
                 .ToListAsync();
 
             List<ReservaDTO> ReservasDTO = reservas.Select(r=> Mapper.Map<ReservaDTO>(r)).ToList();
@@ -500,14 +445,14 @@ namespace DonFlorito.Controllers
 
         [Authorize]
         [Route("CancelarReserva")]
-        [HttpGet]
-        public ActionResult CancelarReserva(long IdReserva)
+        [HttpPatch]
+        public async Task<ActionResult> CancelarReserva(long IdReserva)
         {
             var reserva = BD.Reserva.Where(r => r.Id == IdReserva).Include(r=>r.IdPersonaNavigation).FirstOrDefault();
 
             if (reserva == null)
             {
-                return BadRequest("Reserva inválida.");
+                return BadRequest("Reserva invï¿½lida.");
             }
             if (reserva.FechaReserva.Date < DateTime.Now.Date)
             {
@@ -516,7 +461,7 @@ namespace DonFlorito.Controllers
             reserva.IdEstadoReserva = (long)EnumEstadoReserva.Anulada;
             reserva.FechaCancelacion = DateTime.Now;
             BD.SaveChanges();
-            Util.EnviarCorreoReservaCancelada(reserva);
+            await Util.EnviarCorreoReservaCancelada(reserva);
             return Ok();
         }
 
@@ -528,12 +473,12 @@ namespace DonFlorito.Controllers
 
             if(reserva == null)
             {
-                return BadRequest("Datos no válidos.");
+                return BadRequest("Datos no vï¿½lidos.");
             }
 
             if(reserva.FechaComienzo >= reserva.FechaTermino)
             {
-                return BadRequest("Fechas no válidas.");
+                return BadRequest("Fechas no vï¿½lidas.");
             }
 
             var NReserva = new ReservasEspeciales
@@ -554,13 +499,13 @@ namespace DonFlorito.Controllers
 
         [Authorize]
         [Route("CancelarReservaEspecial")]
-        [HttpGet]
+        [HttpPatch]
         public ActionResult CancelarReservaEspecial(long IdReserva)
         {
             var reserva = BD.ReservasEspeciales.Where(r => r.Id == IdReserva).FirstOrDefault();
             if (reserva == null)
             {
-                return BadRequest("Reserva inválida.");
+                return BadRequest("Reserva invï¿½lida.");
             }
             reserva.IsEnabled = false;
             BD.SaveChanges();

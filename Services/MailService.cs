@@ -23,7 +23,7 @@ namespace DonFlorito.Services
             webHostEnvironment = _webh;
         }
 
-        public async void Send(List<string> destinatarios, string asunto, string contenido, byte[] QRCode)
+        public async Task Send(List<string> destinatarios, string asunto, string contenido, byte[] QRCode)
         {
             var email = new MimeMessage();
 
@@ -72,10 +72,10 @@ namespace DonFlorito.Services
 
             // send email
             using var smtp = new MailKit.Net.Smtp.SmtpClient();
-            smtp.Connect(Host, Puerto, SecureSocketOptions.StartTls);
-            smtp.Authenticate(User, Pass);
-            smtp.Send(email);
-            smtp.Disconnect(true);
+            await smtp.ConnectAsync(Host, Puerto, SecureSocketOptions.StartTls);
+            await smtp.AuthenticateAsync(User, Pass);
+            await smtp.SendAsync(email);
+            await smtp.DisconnectAsync(true);
         }
     }
 }

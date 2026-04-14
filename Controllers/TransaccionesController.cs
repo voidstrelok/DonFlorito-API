@@ -58,7 +58,7 @@ namespace DonFlorito.Controllers
                                 //crear reserva
                                 reserva.IdEstadoReserva = (long)EnumEstadoReserva.Confirmada;
                                 reserva.FechaConfirmacion = DateTime.Now;
-                                Util.EnviarCorreoReservaPagada(reserva,vc);
+                                await Util.EnviarCorreoReservaPagada(reserva,vc);
                                 break;
                             default:
                                 // fallo del pago

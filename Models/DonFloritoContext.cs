@@ -40,8 +40,6 @@ namespace DonFlorito.Models
 
             modelBuilder.Entity<OrdenCompra>(entity =>
             {
-                entity.Property(e => e.Fecha).HasColumnType("datetime");
-
                 entity.HasOne(d => d.IdReservaNavigation)
                     .WithMany(p => p.OrdenCompra)
                     .HasForeignKey(d => d.IdReserva)
@@ -50,9 +48,6 @@ namespace DonFlorito.Models
 
             modelBuilder.Entity<Parametros>(entity =>
             {
-                entity.Property(e => e.HoraApertura).HasColumnType("datetime");
-
-                entity.Property(e => e.HoraCierre).HasColumnType("datetime");
             });
 
             modelBuilder.Entity<Persona>(entity =>
@@ -83,12 +78,6 @@ namespace DonFlorito.Models
 
             modelBuilder.Entity<Reserva>(entity =>
             {
-                entity.Property(e => e.FechaCancelacion).HasColumnType("datetime");
-
-                entity.Property(e => e.FechaConfirmacion).HasColumnType("datetime");
-
-                entity.Property(e => e.FechaIngreso).HasColumnType("datetime");
-
                 entity.Property(e => e.FechaReserva).HasColumnType("date");
 
                 entity.HasOne(d => d.IdEstadoReservaNavigation)
@@ -107,8 +96,6 @@ namespace DonFlorito.Models
             modelBuilder.Entity<ReservaServicio>(entity =>
             {
                 entity.ToTable("Reserva_Servicio");
-
-                entity.Property(e => e.HoraComienzo).HasColumnType("datetime");
 
                 entity.HasOne(d => d.IdPrecioServicioNavigation)
                     .WithMany(p => p.ReservaServicio)
@@ -131,10 +118,6 @@ namespace DonFlorito.Models
 
             modelBuilder.Entity<ReservasEspeciales>(entity =>
             {
-                entity.Property(e => e.FechaComienzo).HasColumnType("datetime");
-
-                entity.Property(e => e.FechaTermino).HasColumnType("datetime");
-
                 entity.HasOne(d => d.IdServicioNavigation)
                     .WithMany(p => p.ReservasEspeciales)
                     .HasForeignKey(d => d.IdServicio)
@@ -185,8 +168,6 @@ namespace DonFlorito.Models
                 entity.Property(e => e.BuyOrder).HasColumnName("buy_order");
 
                 entity.Property(e => e.CardNumber).HasColumnName("card_number");
-
-                entity.Property(e => e.Fecha).HasColumnType("datetime");
 
                 entity.Property(e => e.InstallmentsAmount).HasColumnName("installments_amount");
 
