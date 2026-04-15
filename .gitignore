@@ -364,5 +364,6 @@ FodyWeavers.xsd
 
 
 appsettings.Development.json
+appsettings.Demo.json
 appsettings.Production.json
 efpt.config.json.user
