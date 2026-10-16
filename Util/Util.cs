@@ -278,13 +278,15 @@ namespace DonFlorito.Util
             return hashed;
         }
 
-        public string getToken(Usuario user)
+        public string getToken(Usuario user) => getToken(user.IdPersonaNavigation.Nombre);
+
+        public string getToken(string nombre)
         {
             var key = Encoding.UTF8.GetBytes(Config.GetValue<string>("salt"));
 
             var claims = new ClaimsIdentity();
 
-            claims.AddClaim(new Claim(ClaimTypes.NameIdentifier, user.IdPersonaNavigation.Nombre));
+            claims.AddClaim(new Claim(ClaimTypes.NameIdentifier, nombre));
 
             int tiempoSesion = Config.GetValue<int>("tiempoSesion");
 
@@ -292,8 +294,8 @@ namespace DonFlorito.Util
             {
                 Subject = claims,
                 Expires = DateTime.UtcNow.AddSeconds(tiempoSesion),
-                Issuer = Config.GetValue<string>("JwtIssuer"),
-                Audience = Config.GetValue<string>("JwtAudience"),
+                Issuer = Config.GetValue<string>("JwtIssuer") ?? "DonFloritoAPI",
+                Audience = Config.GetValue<string>("JwtAudience") ?? "DonFloritoClient",
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
 
@@ -499,7 +501,11 @@ namespace DonFlorito.Util
                 {
                     detalleServicios += $"<tr class='servicio'><td class='text-end'><div><strong>{servicio.Cantidad.ToString()} x {servicio.IdServicioNavigation.Nombre}</strong></div></td><td class='text-start'>${servicio.IdPrecioServicioNavigation.Precio * servicio.Cantidad}</td></tr>";
                 }
-                else if (servicio.IdServicioNavigation.IdTipoServicio == (long)EnumTipoServicio.PiscinaGeneral || servicio.IdServicioNavigation.IdTipoServicio == (long)EnumTipoServicio.PiscinaAM)
+                else if (TiposServicio.EsAdicional(servicio.IdServicioNavigation.IdTipoServicio))
+                {
+                    detalleServicios += $"<tr class='servicio'><td class='text-end'><div><strong>{servicio.Cantidad.ToString()} x {servicio.IdServicioNavigation.Nombre}</strong></div></td><td class='text-start'>${servicio.IdPrecioServicioNavigation.Precio * servicio.Cantidad}</td></tr>";
+                }
+                else if (TiposServicio.EsPiscina(servicio.IdServicioNavigation.IdTipoServicio))
                 {
                     detalleServicios += $"<tr class='servicio'><td class='text-end'><div><strong>{servicio.Cantidad.ToString()} x Entrada {servicio.IdServicioNavigation.Nombre}</strong></div></td><td class='text-start'>${servicio.IdPrecioServicioNavigation.Precio * servicio.Cantidad}</td></tr>";
 

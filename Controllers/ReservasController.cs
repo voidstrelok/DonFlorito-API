@@ -112,6 +112,11 @@ namespace DonFlorito.Controllers
                         .FirstOrDefault();
 
                     var Fecha = NReserva.FechaReserva;
+                    var errorLineas = TiposServicio.ValidarLineas(NReserva.ReservaServicio.ToList(), Fecha);
+                    if (errorLineas != null)
+                    {
+                        return BadRequest(errorLineas);
+                    }
                     
                     
                     
@@ -127,7 +132,7 @@ namespace DonFlorito.Controllers
                             return BadRequest("Uno o m�s servicios no est�n disponibles. Favor intente reservar nuevamente.");
                         }
                         //servicio con fecha ocupada
-                        if (Servicio.IdTipoServicio != (long)EnumTipoServicio.Quincho && Servicio.IdTipoServicio != (long)EnumTipoServicio.PiscinaGeneral && Servicio.IdTipoServicio != (long)EnumTipoServicio.PiscinaAM)
+                        if (TiposServicio.EsCancha(Servicio.IdTipoServicio))
                         {
 
                             
@@ -281,6 +286,11 @@ namespace DonFlorito.Controllers
                     }
 
                     var Fecha = NReserva.FechaReserva;
+                    var errorLineas = TiposServicio.ValidarLineas(NReserva.ReservaServicio.ToList(), Fecha);
+                    if (errorLineas != null)
+                    {
+                        return BadRequest(errorLineas);
+                    }
 
                     //comprueba reserva valida
                     foreach (var ReservaServicio in NReserva.ReservaServicio)
@@ -293,7 +303,7 @@ namespace DonFlorito.Controllers
                             return BadRequest("Uno o m�s servicios no est�n disponibles. Favor intente reservar nuevamente. (Services not available anymore)");
                         }
                         //servicio con fecha ocupada
-                        if (Servicio.IdTipoServicio != (long)EnumTipoServicio.Quincho && Servicio.IdTipoServicio != (long)EnumTipoServicio.PiscinaGeneral && Servicio.IdTipoServicio != (long)EnumTipoServicio.PiscinaAM)
+                        if (TiposServicio.EsCancha(Servicio.IdTipoServicio))
                         {
 
 

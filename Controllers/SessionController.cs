@@ -20,13 +20,15 @@ namespace DonFlorito.Controllers
         private readonly DonFloritoContext BD;
         private readonly IMapper Mapper;
         private readonly Utils Util;
+        private readonly IConfiguration Config;
 
-        public SessionController(ILogger<SessionController> logger, DonFloritoContext context, IMapper mapper, Utils utils)
+        public SessionController(ILogger<SessionController> logger, DonFloritoContext context, IMapper mapper, Utils utils, IConfiguration config)
         {
             BD = context;
             _logger = logger;
             Mapper = mapper;
             Util = utils;
+            Config = config;
         }
 
         [AllowAnonymous]
@@ -41,21 +43,92 @@ namespace DonFlorito.Controllers
         [AllowAnonymous]
         [Route("AdminLogin")]
         [HttpPost]
-        public async Task<ActionResult<string>> AdminLogin([FromForm] string usuario, [FromForm] string password)
+        public ActionResult<string> AdminLogin([FromForm] string usuario, [FromForm] string password)
         {
-            var Usuario = await BD.Usuario.Where(u => u.Usuario1.Equals(usuario) && u.Contraseña.Equals(Util.Saltear(password))).Include(u => u.IdPersonaNavigation).FirstOrDefaultAsync();
-            //Console.WriteLine(Util.Saltear(password));
-            if (Usuario == null)
+            // Credenciales del panel: sección "Admin" de appsettings (o variables de entorno Admin__Usuario / Admin__Password).
+            var adminUsuario = Config.GetValue<string>("Admin:Usuario");
+            var adminPassword = Config.GetValue<string>("Admin:Password");
+
+            if (string.IsNullOrEmpty(adminUsuario) || string.IsNullOrEmpty(adminPassword))
+            {
+                _logger.LogWarning("Login de administración deshabilitado: falta Admin:Usuario o Admin:Password.");
+                return NotFound("Credenciales incorrectas o el usuario no existe");
+            }
+
+            // Se comparan ambos siempre (sin cortar en el primero) y en tiempo constante.
+            var usuarioOk = IgualesEnTiempoConstante(usuario, adminUsuario);
+            var passwordOk = IgualesEnTiempoConstante(password, adminPassword);
+            if (!(usuarioOk & passwordOk))
             {
                 return NotFound("Credenciales incorrectas o el usuario no existe");
             }
 
-            if (!Usuario.IsEnabled)
-            {
-                return Forbid("Acceso no autorizado");
-            }
-            return Util.getToken(Usuario);
+            return Util.getToken(adminUsuario);
+        }
 
+        private static bool IgualesEnTiempoConstante(string? a, string b)
+        {
+            var ha = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(a ?? ""));
+            var hb = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(b));
+            return System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(ha, hb);
+        }
+
+        /// <summary>Precios habilitados de los tipos que cambian por temporada (piscinas), para editarlos todos juntos.</summary>
+        [Authorize]
+        [Route("GetPreciosTemporada")]
+        [HttpGet]
+        public List<PrecioTemporadaDTO> GetPreciosTemporada()
+        {
+            return BD.PrecioServicio
+                .Include(p => p.IdTipoServicioNavigation)
+                .Where(p => p.IsEnabled && p.TemporadaDesde != null)
+                .OrderBy(p => p.IdTipoServicio).ThenBy(p => p.TemporadaDesde)
+                .Select(p => new PrecioTemporadaDTO
+                {
+                    Id = p.Id,
+                    IdTipoServicio = p.IdTipoServicio,
+                    NombreTipoServicio = p.IdTipoServicioNavigation.Nombre ?? "",
+                    Precio = p.Precio,
+                    TemporadaDesde = p.TemporadaDesde,
+                    TemporadaHasta = p.TemporadaHasta
+                })
+                .ToList();
+        }
+
+        /// <summary>Cambia precios por temporada. Como en GuardarConfig, el precio anterior se inhabilita y se crea uno nuevo (las reservas hechas conservan el suyo).</summary>
+        [Authorize]
+        [Route("GuardarPreciosTemporada")]
+        [HttpPost]
+        public ActionResult<bool> GuardarPreciosTemporada([FromBody] List<CambioPrecioDTO> cambios)
+        {
+            if (cambios == null || cambios.Any(c => c.Precio < 0))
+            {
+                return BadRequest("Los precios deben ser números enteros mayores o iguales a 0.");
+            }
+
+            foreach (var cambio in cambios)
+            {
+                var actual = BD.PrecioServicio.FirstOrDefault(p => p.Id == cambio.Id && p.IsEnabled && p.TemporadaDesde != null);
+                if (actual == null)
+                {
+                    return BadRequest("Uno de los precios ya no está vigente. Recarga la pantalla e intenta de nuevo.");
+                }
+                if (actual.Precio == cambio.Precio) continue;
+
+                BD.PrecioServicio.Add(new PrecioServicio
+                {
+                    IdTipoServicio = actual.IdTipoServicio,
+                    Minutos = actual.Minutos,
+                    TemporadaDesde = actual.TemporadaDesde,
+                    TemporadaHasta = actual.TemporadaHasta,
+                    IsEnabled = true,
+                    Precio = cambio.Precio
+                });
+                actual.IsEnabled = false;
+            }
+
+            BD.SaveChanges();
+            return true;
         }
 
         [Authorize]
@@ -77,7 +150,7 @@ namespace DonFlorito.Controllers
                 .Include(s=>s.IdTipoServicioNavigation.PrecioServicio)
                 .ToList();
 
-            var PiscinasEnabled = BD.Servicio.Any(s => (s.IdTipoServicio == (long)EnumTipoServicio.PiscinaGeneral || s.IdTipoServicio == (long)EnumTipoServicio.PiscinaAM) && s.IsEnabled);
+            var PiscinasEnabled = BD.Servicio.Any(s => TiposServicio.Piscinas.Contains(s.IdTipoServicio) && s.IsEnabled);
 
             List<ServicioDTO> ServiciosDTO = Servicios.Select(s => Mapper.Map<ServicioDTO>(s)).ToList();
 
@@ -115,11 +188,13 @@ namespace DonFlorito.Controllers
 
                 if(servicio.CambiaPrecio)
                 {
-                    var ps = BD.PrecioServicio.Where(ps => ps.IdTipoServicio == servicio.IdTipoServicio).FirstOrDefault(ps => ps.IsEnabled);
+                    var ps = TiposServicio.PrecioVigente(BD.PrecioServicio.Where(ps => ps.IdTipoServicio == servicio.IdTipoServicio).ToList(), DateTime.Today);
                     BD.PrecioServicio.Add(new PrecioServicio
                     {
                         IdTipoServicio = servicio.IdTipoServicio,
                         Minutos = ps.Minutos,
+                        TemporadaDesde = ps.TemporadaDesde,
+                        TemporadaHasta = ps.TemporadaHasta,
                         IsEnabled = true,
                         Precio = servicio.Precio
                     });
@@ -127,7 +202,7 @@ namespace DonFlorito.Controllers
                 }
                 
             }
-            var Piscinas = BD.Servicio.Where(s => (s.IdTipoServicio == (long)EnumTipoServicio.PiscinaGeneral || s.IdTipoServicio == (long)EnumTipoServicio.PiscinaAM)).ToList();
+            var Piscinas = BD.Servicio.Where(s => TiposServicio.Piscinas.Contains(s.IdTipoServicio)).ToList();
 
             foreach(var pisc in Piscinas)
             {

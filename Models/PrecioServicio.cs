@@ -16,6 +16,8 @@ namespace DonFlorito.Models
         public long IdTipoServicio { get; set; }
         public long Precio { get; set; }
         public long? Minutos { get; set; }
+        public int? TemporadaDesde { get; set; }
+        public int? TemporadaHasta { get; set; }
         public bool IsEnabled { get; set; }
 
         public virtual TipoServicio IdTipoServicioNavigation { get; set; }

@@ -103,8 +103,28 @@ cfg.SaveToken = true;
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration.GetValue<string>("salt"))),
         ValidateIssuer = true,
         ValidateAudience = true,
-        ValidIssuer = builder.Configuration.GetValue<string>("JwtIssuer"),
-        ValidAudience = builder.Configuration.GetValue<string>("JwtAudience"),
+        ValidIssuer = builder.Configuration.GetValue<string>("JwtIssuer") ?? "DonFloritoAPI",
+        ValidAudience = builder.Configuration.GetValue<string>("JwtAudience") ?? "DonFloritoClient",
+    };
+
+    // Deja en el log el motivo exacto cuando se rechaza un token (firma, emisor, audiencia, expirado...).
+    cfg.Events = new JwtBearerEvents
+    {
+        OnAuthenticationFailed = ctx =>
+        {
+            ctx.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("JwtBearer")
+                .LogWarning("Token rechazado en {Path}: {Motivo}", ctx.Request.Path, ctx.Exception.Message);
+            return Task.CompletedTask;
+        },
+        OnChallenge = ctx =>
+        {
+            if (string.IsNullOrEmpty(ctx.Request.Headers.Authorization))
+            {
+                ctx.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("JwtBearer")
+                    .LogWarning("Petición a {Path} sin cabecera Authorization (¿el proxy la está quitando?)", ctx.Request.Path);
+            }
+            return Task.CompletedTask;
+        }
     };
 });
 

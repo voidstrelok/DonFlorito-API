@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using DonFlorito.Models;
+using DonFlorito.Util;
 using Transbank.Webpay.WebpayPlus.Responses;
 
 namespace DonFlorito.DTO
@@ -35,7 +36,7 @@ namespace DonFlorito.DTO
                .ForMember(prop => prop.TipoServicio, opt => { opt.MapFrom(x => x.IdTipoServicioNavigation); });
 
             CreateMap<Servicio, ServicioDTO>()
-                .ForMember(prop => prop.Precio, opt => { opt.MapFrom(x => x.IdTipoServicioNavigation.PrecioServicio.FirstOrDefault(p => p.IsEnabled).Precio);});
+                .ForMember(prop => prop.Precio, opt => { opt.MapFrom(x => TiposServicio.PrecioVigente(x.IdTipoServicioNavigation.PrecioServicio, DateTime.Today) != null ? TiposServicio.PrecioVigente(x.IdTipoServicioNavigation.PrecioServicio, DateTime.Today)!.Precio : 0);});
 
             CreateMap<ReservaServicio, ReservaServicioDTO>()
                 .ForMember(prop => prop.PrecioServicio, opt => { opt.MapFrom(x => x.IdPrecioServicioNavigation); })
